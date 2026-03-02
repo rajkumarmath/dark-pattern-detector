@@ -13,3 +13,4 @@ gunicorn==21.2.0
 python-dotenv==1.0.0
 pytesseract==0.3.10  # ADD THIS LINE
 pillow==10.1.0        # pytesseract needs pillow
+opencv-python-headless==4.8.1.78
