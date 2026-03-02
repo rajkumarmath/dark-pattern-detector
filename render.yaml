@@ -12,3 +12,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.18
+
+      - key: NUMBA_CACHE_DIR
+        value: /tmp/numba_cache
+
