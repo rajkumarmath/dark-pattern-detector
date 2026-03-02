@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Models (we'll commit these instead of ignoring)
+# app/models/ml_models/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
