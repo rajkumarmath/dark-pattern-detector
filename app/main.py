@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from typing import Any  
 
 from app.core.config import settings
 from app.api.endpoints import router
@@ -66,3 +67,4 @@ async def shutdown_event():
     """Cleanup on shutdown"""
 
     print("👋 Shutting down...")
+
