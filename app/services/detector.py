@@ -139,9 +139,29 @@ class DarkPatternDetector:
         confidence = scores[predicted] / total_score if total_score > 0 else 0
         
         return {
-            'pattern_type': predicted,
-            'confidence': min(confidence, 0.9)
+            'pattern_type': int(predicted),  # Convert to Python int
+            'confidence': float(min(confidence, 0.9))  # Convert to Python float
         }
+    
+    def _convert_numpy_types(self, obj: Any) -> Any:
+        """
+        Recursively convert NumPy types to Python native types
+        """
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.str_):
+            return str(obj)
+        elif isinstance(obj, dict):
+            return {key: self._convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._convert_numpy_types(item) for item in obj]
+        return obj
     
     def detect(self, text: Optional[str] = None, url: Optional[str] = None) -> DetectionResponse:
         """
@@ -167,11 +187,14 @@ class DarkPatternDetector:
                 features = self.feature_extractor.extract_features(clean_text)
                 prediction = self.classifier.predict([features])[0]
                 proba = self.classifier.predict_proba([features])[0]
+                
+                # Convert NumPy types to Python native
+                prediction = int(prediction)
                 confidence = float(max(proba))
             else:
                 fallback = self.predict_fallback(clean_text)
-                prediction = fallback['pattern_type']
-                confidence = fallback['confidence']
+                prediction = int(fallback['pattern_type'])
+                confidence = float(fallback['confidence'])
             
             # Get manipulative phrases
             if self.models_loaded:
@@ -186,7 +209,7 @@ class DarkPatternDetector:
                     5: ['call', 'contact', 'form', 'business hours']
                 }
                 keywords = phrase_map.get(prediction, [])
-                manipulative_phrases = [kw for kw in keywords if kw in clean_text.lower()]
+                manipulative_phrases = [str(kw) for kw in keywords if kw in clean_text.lower()]
             
             # Calculate risk score
             risk_result = self.risk_scorer.calculate_risk(
@@ -195,29 +218,62 @@ class DarkPatternDetector:
                 manipulative_phrases
             )
             
+            # Convert risk_result NumPy types to Python native
+            risk_result = self._convert_numpy_types(risk_result)
+            
+            # Ensure risk_result has the correct structure
+            if 'breakdown' not in risk_result:
+                risk_result['breakdown'] = {
+                    'base': 0.0,
+                    'intensity_multiplier': 1.0,
+                    'context_multiplier': 1.0,
+                    'context_detected': 'default',
+                    'final': float(risk_result.get('score', 0))
+                }
+            
             # Generate explanation
             explanation = self.explainer.generate_explanation(
                 prediction,
-                risk_result['score'],
+                float(risk_result['score']),
                 manipulative_phrases
             )
             
             # Get ethical suggestions
-            context = risk_result['breakdown']['context_detected']
+            context = str(risk_result['breakdown'].get('context_detected', 'default'))
             ethical_suggestion = self.ethics_suggester.suggest_corrections(prediction, context)
+            
+            # Convert ethical_suggestion to dict if it's an object
+            if hasattr(ethical_suggestion, 'dict'):
+                ethical_suggestion = ethical_suggestion.dict()
+            elif hasattr(ethical_suggestion, '__dict__'):
+                ethical_suggestion = vars(ethical_suggestion)
             
             # Pattern names mapping
             pattern_names = ['none', 'forced_action', 'confirmshaming', 
                            'hidden_costs', 'interface_interference', 'obstruction']
             
-            # Create response
+            # Create RiskScore object from converted data
+            risk_score_obj = RiskScore(
+                score=float(risk_result['score']),
+                breakdown=risk_result['breakdown'],
+                level=str(risk_result['level'])
+            )
+            
+            # Create EthicalSuggestion object
+            ethical_obj = EthicalSuggestion(
+                title=str(ethical_suggestion.get('title', '')),
+                alternatives=[str(alt) for alt in ethical_suggestion.get('alternatives', [])],
+                example=str(ethical_suggestion.get('example', ''))
+            )
+            
+            # Create response with all Python native types
             return DetectionResponse(
-                pattern_type=prediction,
-                pattern_name=pattern_names[prediction],
-                risk_score=RiskScore(**risk_result),
-                explanation=explanation,
-                ethical_recommendation=EthicalSuggestion(**ethical_suggestion),
-                confidence=confidence
+                pattern_type=int(prediction),
+                pattern_name=str(pattern_names[prediction]),
+                risk_score=risk_score_obj,
+                explanation=str(explanation),
+                ethical_recommendation=ethical_obj,
+                confidence=float(confidence) if confidence is not None else None
             )
             
         except Exception as e:
