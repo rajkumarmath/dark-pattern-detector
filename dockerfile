@@ -21,6 +21,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir numpy==1.24.3 && \
     pip install --no-cache-dir scikit-learn==1.2.2 && \
     pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+    pandas==1.5.3
 
 # Copy the rest of the application
 COPY . .
@@ -31,3 +33,4 @@ RUN python scripts/train_model.py
 
 # Command to run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
+
