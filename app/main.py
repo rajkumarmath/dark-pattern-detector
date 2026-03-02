@@ -6,6 +6,14 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.api.endpoints import router
 
+
+# Custom JSON Response that handles NumPy types
+class NumpySafeJSONResponse(JSONResponse):
+    def render(self, content: Any) -> bytes:
+        # Convert NumPy types before JSON serialization
+        safe_content = NumpySafeJSONEncoder.encode(content)
+        return super().render(safe_content)
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
@@ -56,4 +64,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
+
     print("👋 Shutting down...")
