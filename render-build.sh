@@ -1,26 +1,56 @@
 #!/bin/bash
+echo "🚀 Starting Render build process..."
 
-echo "🚀 Starting Render build..."
+# Exit on error
+set -e
 
-# Install system dependencies for pytesseract
-apt-get update && apt-get install -y tesseract-ocr
+# Print debug info
+echo "Python version:"
+python --version
+echo "Pip version:"
+pip --version
 
-# Upgrade pip and build tools
+# Upgrade pip
 pip install --upgrade pip setuptools wheel
 
-# Install numpy first (has wheels)
+# FIRST, install numpy with specific version (critical!)
+echo "📦 Installing numpy==1.24.3..."
 pip install numpy==1.24.3
 
-# Install scikit-learn (will use wheel now)
-pip install scikit-learn==1.2.2 joblib==1.2.0
+# Verify numpy installation
+echo "✅ NumPy installed. Version:"
+python -c "import numpy; print(numpy.__version__)"
 
-# Install remaining packages
+# Install scikit-learn (depends on numpy)
+echo "📦 Installing scikit-learn==1.2.2..."
+pip install scikit-learn==1.2.2
+
+# Install joblib
+echo "📦 Installing joblib==1.2.0..."
+pip install joblib==1.2.0
+
+# Install remaining dependencies
+echo "📦 Installing remaining packages..."
 pip install -r requirements.txt
 
 # Create model directory
 mkdir -p app/models/ml_models
 
-rm -rf app/models/ml_models/*
+# FORCE RETRAIN - delete old incompatible model
+echo "🗑️ Removing old model files..."
+rm -f app/models/ml_models/classifier.pkl
+rm -f app/models/ml_models/feature_extractor.pkl
+
+# Train fresh model with correct versions
+echo "🔄 Training new model with correct NumPy version..."
 python scripts/train_model.py
 
-echo "✅ Build complete!"
+# Verify model was created
+if [ -f "app/models/ml_models/classifier.pkl" ]; then
+    echo "✅ Model trained successfully!"
+else
+    echo "❌ Model training failed!"
+    exit 1
+fi
+
+echo "✅ Build complete! Ready to analyze screenshots."
