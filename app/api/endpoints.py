@@ -1,12 +1,14 @@
 # app/api/endpoints.py
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from typing import Optional, List
+import numpy as np
 from pydantic import BaseModel
 import tempfile
 import os
 
 from app.models.schemas import DetectionRequest, DetectionResponse, HealthCheck
 from app.services.multimodal_detector import MultiModalDetector
+from app.utils.json_encoder import NumpySafeJSONEncoder
 
 router = APIRouter()
 
@@ -17,6 +19,10 @@ class BatchRequest(BaseModel):
 class SolutionRequest(BaseModel):
     pattern_type: int
     context: Optional[str] = "default"
+
+def safe_response(data):
+    """Ensure response has no NumPy types"""
+    return NumpySafeJSONEncoder.encode(data)
 
 # Dependency
 def get_detector():
@@ -46,7 +52,7 @@ async def detect_dark_patterns(
             result = detector.detect_from_url(str(request.url))
         else:
             result = detector.detect_from_text(request.text or "")
-        return result
+        return safe_response(result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -74,7 +80,7 @@ async def detect_from_screenshot(
         # Clean up
         os.unlink(tmp_path)
         
-        return result
+        return safe_response(result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Screenshot analysis failed: {str(e)}")
 
@@ -161,4 +167,5 @@ async def list_patterns():
             {"id": 4, "name": "interface_interference", "description": "Hides preferred options"},
             {"id": 5, "name": "obstruction", "description": "Makes leaving difficult"}
         ]
+
     }
